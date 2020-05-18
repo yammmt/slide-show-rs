@@ -1,0 +1,5 @@
+/target
+
+photo/*
+!photo/.gitkeep
+!photo/sawayaka256.jpg
