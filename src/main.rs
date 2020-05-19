@@ -1,6 +1,39 @@
 extern crate image;
 
+use dotenv;
 use minifb::{Key, ScaleMode, Window, WindowOptions};
+
+#[cfg(test)] mod tests;
+
+#[derive(Debug)]
+struct WindowSize(usize, usize);
+
+fn new_window() -> Window {
+    let w = dotenv::var("WINDOW_WIDTH");
+    let h = dotenv::var("WINDOW_HEIGHT");
+    let size = WindowSize(
+        match w {
+            Ok(w_str) => w_str.parse().unwrap(),
+            Err(_) => 640
+        },
+        match h {
+            Ok(h_str) => h_str.parse().unwrap(),
+            Err(_) => 480
+        },
+    );
+
+    Window::new(
+        "slide-show-rs - Press ESC to exit",
+        size.0,
+        size.1,
+        WindowOptions {
+            resize: true,
+            scale_mode: ScaleMode::Center,
+            ..WindowOptions::default()
+        },
+    )
+    .expect("Unable to open Window")
+}
 
 fn main() {
     let filepath = "photo/sawayaka256.jpg";
@@ -16,17 +49,7 @@ fn main() {
         }
     }
 
-    let mut window = Window::new(
-        "slide-show-rs - Press ESC to exit",
-        width as usize,
-        height as usize,
-        WindowOptions {
-            resize: true,
-            scale_mode: ScaleMode::Center,
-            ..WindowOptions::default()
-        },
-    )
-    .expect("Unable to open Window");
+    let mut window = new_window();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         match window.update_with_buffer(&buf, width as usize, height as usize) {

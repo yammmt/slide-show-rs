@@ -4,11 +4,23 @@ Show images
 
 ## Usage
 
+Before compiling, make sure that your window size is defined in `.env` file. For example,
+
+```text
+WINDOW_WIDTH=1920
+WINDOW_HEIGHT=1080
+```
+
 ```bash
 cargo run
 ```
 
 If you got error(s), please confirm support status of minifb crate ([repo](https://github.com/emoon/rust_minifb)).
+
+## Test
+
+To avoid `NSInternalInconsistencyException`, test **must** be run with `--test_threads=1` option.
+That is, run `cargo test -- --test-threads=1`.
 
 ## Links
 
