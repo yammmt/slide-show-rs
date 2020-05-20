@@ -4,6 +4,7 @@ extern crate image;
 use dotenv;
 use glob::glob;
 use minifb::{Key, ScaleMode, Window, WindowOptions};
+use std::time::{Duration, SystemTime};
 
 #[cfg(test)] mod tests;
 
@@ -82,12 +83,18 @@ fn main() {
     }
 
     let mut window = new_window();
+    let mut img_idx = 0;
+    let mut img_buf = &img_bufs[img_idx];
+    let mut start_time = SystemTime::now();
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        for img_buf in &img_bufs {
-            match window.update_with_buffer(&img_buf.buf, img_buf.width, img_buf.height) {
-                Ok(_) => {},
-                Err(e) => panic!("{}", e),
-            }
+        if start_time.elapsed().unwrap() >= Duration::from_secs(5) {
+            img_idx = (img_idx + 1) % img_bufs.len();
+            img_buf = &img_bufs[img_idx];
+            start_time = SystemTime::now();
+        }
+        match window.update_with_buffer(&img_buf.buf, img_buf.width, img_buf.height) {
+            Ok(_) => {},
+            Err(e) => panic!("{}", e),
         }
     }
 }
