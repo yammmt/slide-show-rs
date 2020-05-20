@@ -1,10 +1,17 @@
+extern crate glob;
 extern crate image;
 
 use dotenv;
+use glob::glob;
 use minifb::{Key, ScaleMode, Window, WindowOptions};
 
 #[cfg(test)] mod tests;
 
+struct ImgBuf {
+    pub buf: Vec<u32>,
+    pub width: usize,
+    pub height: usize,
+}
 #[derive(Debug)]
 struct WindowSize(usize, usize);
 
@@ -36,25 +43,51 @@ fn new_window() -> Window {
 }
 
 fn main() {
-    let filepath = "photo/sawayaka256.jpg";
-    let img = image::open(&filepath).unwrap();
-    let rgb = img.as_rgb8().unwrap();
-
-    let (width, height) = rgb.dimensions();
-    let mut buf: Vec<u32> = vec![] ;
-    for y in 0..height {
-        for x in 0..width {
-            let pixel = rgb.get_pixel(x as u32, y as u32);
-            buf.push(0xFF000000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32));
+    // get image file paths
+    let mut img_filepaths: Vec<String> = vec![];
+    for entry in glob("./photo/*.jpg").expect("Failed to read glob pattern") {
+        match entry {
+            Ok(path) => {
+                match path.to_str() {
+                    Some(s) => img_filepaths.push(s.to_string()),
+                    None => {},
+                }
+            }
+            Err(_) => {},
         }
+    }
+    // TODO: use logger?
+    println!("{:?}", img_filepaths);
+    if img_filepaths.len() == 0 {
+        println!("No .jpg file found.");
+        return;
+    }
+
+    // load images before opening window
+    let mut img_bufs: Vec<_> = vec![];
+    for i in &img_filepaths {
+        let img = image::open(&i).unwrap();
+        let rgb = img.as_rgb8().unwrap();
+
+        let (width, height) = rgb.dimensions();
+        let mut buf: Vec<u32> = vec![] ;
+        // TODO: better to use thread?
+        for y in 0..height {
+            for x in 0..width {
+                let pixel = rgb.get_pixel(x as u32, y as u32);
+                buf.push(0xFF000000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32));
+            }
+        }
+        img_bufs.push(ImgBuf{ buf, width: width as usize, height: height as usize });
     }
 
     let mut window = new_window();
-
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        match window.update_with_buffer(&buf, width as usize, height as usize) {
-            Ok(_) => {},
-            Err(e) => panic!("{}", e),
+        for img_buf in &img_bufs {
+            match window.update_with_buffer(&img_buf.buf, img_buf.width, img_buf.height) {
+                Ok(_) => {},
+                Err(e) => panic!("{}", e),
+            }
         }
     }
 }
