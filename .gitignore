@@ -5,3 +5,7 @@
 photo/*
 !photo/.gitkeep
 !photo/sawayaka256.jpg
+!photo/steak.jpg
+!photo/resized/
+photo/resized/*
+!photo/resized/.gitkeep

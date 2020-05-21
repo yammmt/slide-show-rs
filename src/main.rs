@@ -3,6 +3,7 @@ extern crate image;
 
 use dotenv;
 use glob::glob;
+use image::{imageops, GenericImageView};
 use minifb::{Key, ScaleMode, Window, WindowOptions};
 use std::time::{Duration, SystemTime};
 
@@ -13,23 +14,42 @@ struct ImgBuf {
     pub width: usize,
     pub height: usize,
 }
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 struct WindowSize(usize, usize);
 
-fn new_window() -> Window {
-    let w = dotenv::var("WINDOW_WIDTH");
-    let h = dotenv::var("WINDOW_HEIGHT");
-    let size = WindowSize(
-        match w {
-            Ok(w_str) => w_str.parse().unwrap(),
-            Err(_) => 640
-        },
-        match h {
-            Ok(h_str) => h_str.parse().unwrap(),
-            Err(_) => 480
-        },
-    );
+// TODO: allow any glob pattern as argument
+fn get_scaled_img_filepath_array(window_size: WindowSize) -> Result<Vec<String>, String> {
+    let pattern = "photo/*.jpg";
+    let mut img_filepaths: Vec<String> = vec![];
+    for entry in glob(&pattern).expect("Failed to read glob pattern") {
+        if let Ok(path) = entry {
+            if let Some(s) = path.to_str() {
+                let mut img = image::open(s).unwrap();
+                if img.dimensions().0 > window_size.0 as u32 || img.dimensions().1 > window_size.1 as u32 {
+                    // resize big images to load fast
+                    // for resize algorithm detail, see official documents at
+                    // https://docs.rs/image/0.23.4/image/imageops/enum.FilterType.html#examples
+                    img = img.resize(window_size.0 as u32, window_size.1 as u32, imageops::CatmullRom);
+                    let resized_filename = s.replace("photo/", "photo/resized/");
+                    img.save(&resized_filename).unwrap();
+                    img_filepaths.push(resized_filename)
+                } else {
+                    img_filepaths.push(s.to_string());
+                }
+            } else {
+                println!("Failed to parse path {:?}", path);
+            }
+        }
+    }
+    if img_filepaths.len() > 0 {
+        Ok(img_filepaths)
 
+    } else {
+        Err(format!("No image files found in {}", pattern))
+    }
+}
+
+fn new_window(size: WindowSize) -> Window {
     Window::new(
         "slide-show-rs - Press ESC to exit",
         size.0,
@@ -44,25 +64,22 @@ fn new_window() -> Window {
 }
 
 fn main() {
-    // get image file paths
-    let mut img_filepaths: Vec<String> = vec![];
-    for entry in glob("./photo/*.jpg").expect("Failed to read glob pattern") {
-        match entry {
-            Ok(path) => {
-                match path.to_str() {
-                    Some(s) => img_filepaths.push(s.to_string()),
-                    None => {},
-                }
-            }
-            Err(_) => {},
-        }
-    }
-    // TODO: use logger?
-    println!("{:?}", img_filepaths);
-    if img_filepaths.len() == 0 {
-        println!("No .jpg file found.");
-        return;
-    }
+    // get window size
+    let w = dotenv::var("WINDOW_WIDTH");
+    let h = dotenv::var("WINDOW_HEIGHT");
+    let size = WindowSize(
+        match w {
+            Ok(w_str) => w_str.parse().unwrap(),
+            Err(_) => 640
+        },
+        match h {
+            Ok(h_str) => h_str.parse().unwrap(),
+            Err(_) => 480
+        },
+    );
+
+    let img_filepaths = get_scaled_img_filepath_array(size).unwrap();
+    println!("images found: {:?}", img_filepaths);
 
     // load images before opening window
     let mut img_bufs: Vec<_> = vec![];
@@ -82,7 +99,7 @@ fn main() {
         img_bufs.push(ImgBuf{ buf, width: width as usize, height: height as usize });
     }
 
-    let mut window = new_window();
+    let mut window = new_window(size);
     let mut img_idx = 0;
     let mut img_buf = &img_bufs[img_idx];
     let mut start_time = SystemTime::now();

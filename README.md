@@ -11,8 +11,10 @@ WINDOW_WIDTH=1920
 WINDOW_HEIGHT=1080
 ```
 
+To reduce time to build, use `--release` option. It makes this program much faster.
+
 ```bash
-cargo run
+cargo run --release
 ```
 
 If you got error(s), please confirm support status of minifb crate ([repo](https://github.com/emoon/rust_minifb)).
