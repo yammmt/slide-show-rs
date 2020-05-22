@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 dotenv = "^0.15"
+glob = "^0.3"
 image = "^0.23"
 minifb = "^0.16"
