@@ -5,6 +5,7 @@ use dotenv;
 use glob::glob;
 use image::{imageops, GenericImageView};
 use minifb::{Key, ScaleMode, Window, WindowOptions};
+use std::path::Path;
 use std::time::{Duration, SystemTime};
 
 #[cfg(test)] mod tests;
@@ -49,6 +50,23 @@ fn get_scaled_img_filepath_array(window_size: WindowSize) -> Result<Vec<String>,
     }
 }
 
+// TODO: return `Result` to run recovery process
+fn image_buffer_from_filepath<P>(filepath: P) -> ImgBuf
+    where P: AsRef<Path> {
+    let img = image::open(&filepath).unwrap();
+    let rgb = img.as_rgb8().unwrap();
+
+    let (width, height) = rgb.dimensions();
+    let mut buf: Vec<u32> = vec![];
+    for y in 0..height {
+        for x in 0..width {
+            let pixel = rgb.get_pixel(x as u32, y as u32);
+            buf.push(0xFF000000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32));
+        }
+    }
+    ImgBuf{ buf, width: width as usize, height: height as usize }
+}
+
 fn new_window(size: WindowSize) -> Window {
     Window::new(
         "slide-show-rs - Press ESC to exit",
@@ -81,32 +99,17 @@ fn main() {
     let img_filepaths = get_scaled_img_filepath_array(size).unwrap();
     println!("images found: {:?}", img_filepaths);
 
-    // load images before opening window
-    let mut img_bufs: Vec<_> = vec![];
-    for i in &img_filepaths {
-        let img = image::open(&i).unwrap();
-        let rgb = img.as_rgb8().unwrap();
-
-        let (width, height) = rgb.dimensions();
-        let mut buf: Vec<u32> = vec![] ;
-        // TODO: better to use thread?
-        for y in 0..height {
-            for x in 0..width {
-                let pixel = rgb.get_pixel(x as u32, y as u32);
-                buf.push(0xFF000000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32));
-            }
-        }
-        img_bufs.push(ImgBuf{ buf, width: width as usize, height: height as usize });
-    }
+    // load first image before opening window
+    let mut img_buf = image_buffer_from_filepath(img_filepaths.first().unwrap());
 
     let mut window = new_window(size);
     let mut img_idx = 0;
-    let mut img_buf = &img_bufs[img_idx];
     let mut start_time = SystemTime::now();
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if start_time.elapsed().unwrap() >= Duration::from_secs(5) {
-            img_idx = (img_idx + 1) % img_bufs.len();
-            img_buf = &img_bufs[img_idx];
+            img_idx = (img_idx + 1) % img_filepaths.len();
+            // TODO: if error is detected, skip its image and try to read next one
+            img_buf = image_buffer_from_filepath(&img_filepaths[img_idx]);
             start_time = SystemTime::now();
         }
         match window.update_with_buffer(&img_buf.buf, img_buf.width, img_buf.height) {
