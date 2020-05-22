@@ -1,7 +1,6 @@
 extern crate glob;
 extern crate image;
 
-use dotenv;
 use glob::glob;
 use image::{imageops, GenericImageView};
 use minifb::{Key, ScaleMode, Window, WindowOptions};
@@ -42,7 +41,7 @@ fn get_scaled_img_filepath_array(window_size: WindowSize) -> Result<Vec<String>,
             }
         }
     }
-    if img_filepaths.len() > 0 {
+    if !img_filepaths.is_empty() {
         Ok(img_filepaths)
 
     } else {
@@ -61,7 +60,7 @@ fn image_buffer_from_filepath<P>(filepath: P) -> ImgBuf
     for y in 0..height {
         for x in 0..width {
             let pixel = rgb.get_pixel(x as u32, y as u32);
-            buf.push(0xFF000000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32));
+            buf.push(0xFF00_0000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32));
         }
     }
     ImgBuf{ buf, width: width as usize, height: height as usize }
