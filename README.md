@@ -1,5 +1,7 @@
 # slide-show-rs
 
+![Rust](https://github.com/yammmt/slide-show-rs/workflows/Rust/badge.svg)
+
 Show images
 
 ## Usage

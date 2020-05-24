@@ -1,15 +1,6 @@
 use super::*;
 
 #[test]
-fn test_new_window() {
-    let size = WindowSize(40, 20);
-    let window = new_window(size);
-    let ws = window.get_size();
-    assert_eq!(size.0, ws.0);
-    assert_eq!(size.1, ws.1);
-}
-
-#[test]
 // TODO: make sure that huge image is resized to fit given size
 fn test_img_filepath() {
     // ensure all image paths are included
