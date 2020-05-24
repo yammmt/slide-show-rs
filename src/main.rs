@@ -4,7 +4,7 @@ extern crate image;
 use glob::glob;
 use image::{imageops, GenericImageView};
 use minifb::{Key, ScaleMode, Window, WindowOptions};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 #[cfg(test)] mod tests;
@@ -17,35 +17,44 @@ struct ImgBuf {
 #[derive(Copy, Clone, Debug)]
 struct WindowSize(usize, usize);
 
-// TODO: allow any glob pattern as argument
-fn get_scaled_img_filepath_array(window_size: WindowSize) -> Result<Vec<String>, String> {
-    let pattern = "photo/*.jpg";
-    let mut img_filepaths: Vec<String> = vec![];
-    for entry in glob(&pattern).expect("Failed to read glob pattern") {
-        if let Ok(path) = entry {
-            if let Some(s) = path.to_str() {
-                let mut img = image::open(s).unwrap();
-                if img.dimensions().0 > window_size.0 as u32 || img.dimensions().1 > window_size.1 as u32 {
-                    // resize big images to load fast
-                    // for resize algorithm detail, see official documents at
-                    // https://docs.rs/image/0.23.4/image/imageops/enum.FilterType.html#examples
-                    img = img.resize(window_size.0 as u32, window_size.1 as u32, imageops::CatmullRom);
-                    let resized_filename = s.replace("photo/", "photo/resized/");
-                    img.save(&resized_filename).unwrap();
-                    img_filepaths.push(resized_filename)
-                } else {
-                    img_filepaths.push(s.to_string());
-                }
+// TODO: skip invalid image files
+fn get_scaled_img_filepath_array<P>(dir: P, window_size: WindowSize) -> Result<Vec<PathBuf>, String>
+    where P: AsRef<Path> {
+    if !dir.as_ref().is_dir() {
+        return Err(String::from("Give me directory path like `./photo/`"))
+    }
+    let filepath_base = dir.as_ref().join("*.jpg");
+
+    let mut img_filepaths: Vec<PathBuf> = vec![];
+    for entry in glob(
+            filepath_base.to_str()
+            .expect("Failed to parse base filepath")
+        ).expect("Failed to read glob pattern") {
+        if let Ok(s) = entry {
+            let mut img = image::open(&s).unwrap();
+            if img.dimensions().0 > window_size.0 as u32 || img.dimensions().1 > window_size.1 as u32 {
+                // resize big images to load fast
+                // for resize algorithm detail, see official documents at
+                // https://docs.rs/image/0.23.4/image/imageops/enum.FilterType.html#examples
+                img = img.resize(window_size.0 as u32, window_size.1 as u32, imageops::CatmullRom);
+                let resized_filename = s.parent()
+                    .unwrap_or_else(|| panic!("Failed to get parent directory of {:?}", s))
+                    .join("resized")
+                    .join(s.file_name().unwrap());
+                img.save(&resized_filename).unwrap();
+                img_filepaths.push(resized_filename)
             } else {
-                println!("Failed to parse path {:?}", path);
+                img_filepaths.push(PathBuf::from(&s));
             }
+        } else {
+            println!("Failed to parse path {:?}", entry);
         }
     }
     if !img_filepaths.is_empty() {
         Ok(img_filepaths)
 
     } else {
-        Err(format!("No image files found in {}", pattern))
+        Err(format!("No image files found in {}", filepath_base.to_str().unwrap()))
     }
 }
 
@@ -95,7 +104,7 @@ fn main() {
         },
     );
 
-    let img_filepaths = get_scaled_img_filepath_array(size).unwrap();
+    let img_filepaths = get_scaled_img_filepath_array("./photo/", size).unwrap();
     println!("images found: {:?}", img_filepaths);
 
     // load first image before opening window
