@@ -4,6 +4,7 @@ extern crate image;
 use glob::glob;
 use image::{imageops, GenericImageView};
 use minifb::{Key, ScaleMode, Window, WindowOptions};
+use std::env;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
@@ -104,7 +105,13 @@ fn main() {
         },
     );
 
-    let img_filepaths = get_scaled_img_filepath_array("./photo/", size).unwrap();
+    let args: Vec<String> = env::args().collect();
+    let dir = if args.len() < 2 {
+        "./photo"
+    } else {
+        &args[1]
+    };
+    let img_filepaths = get_scaled_img_filepath_array(&dir, size).unwrap();
     println!("images found: {:?}", img_filepaths);
 
     // load first image before opening window

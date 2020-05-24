@@ -17,6 +17,8 @@ To reduce preprocessing time, use `--release` option. It makes this program much
 cargo run --release
 ```
 
+By default, this app shows all images in `photo/` directory. If you want to replace it, please give the app directory path as an argument like `cargo run --release photo/test`.
+
 If you got error(s), please confirm support status of minifb crate ([repo](https://github.com/emoon/rust_minifb)).
 
 ## Test

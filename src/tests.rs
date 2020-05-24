@@ -10,8 +10,6 @@ fn test_new_window() {
 }
 
 #[test]
-// TODO: better to have another (small) image directory to test.
-//       to archieve it, first, add argument to `get_scaled_img_filepath_array`.
 // TODO: make sure that huge image is resized to fit given size
 fn test_img_filepath() {
     // ensure all image paths are included
@@ -28,7 +26,6 @@ fn test_img_filepath_with_wrong_dir() {
 }
 
 #[test]
-// TODO: avoid using directory same as develop/release build
 fn test_img_buffer() {
     let img_buf = image_buffer_from_filepath("photo/test/sawayaka256.jpg");
     // there are NO practical ways to test image buffer itself...
