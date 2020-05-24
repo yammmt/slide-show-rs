@@ -728,6 +728,7 @@ dependencies = [
  "glob",
  "image",
  "minifb",
+ "rand 0.7.3",
 ]
 
 [[package]]

@@ -7,6 +7,7 @@ use minifb::{Key, ScaleMode, Window, WindowOptions};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
+use rand::seq::SliceRandom;
 
 #[cfg(test)] mod tests;
 
@@ -111,8 +112,10 @@ fn main() {
     } else {
         &args[1]
     };
-    let img_filepaths = get_scaled_img_filepath_array(&dir, size).unwrap();
+    let mut img_filepaths = get_scaled_img_filepath_array(&dir, size).unwrap();
     println!("images found: {:?}", img_filepaths);
+    let mut rng = rand::thread_rng();
+    img_filepaths.shuffle(&mut rng);
 
     // load first image before opening window
     let mut img_buf = image_buffer_from_filepath(img_filepaths.first().unwrap());
