@@ -33,4 +33,4 @@ That is, run `cargo test -- --test-threads=1`.
 The idea of image viewer comes from:
 
 - [rust_minifb image example](https://github.com/emoon/rust_minifb/blob/master/examples/image.rs)
-- [Issue in rust_minifb reop](https://github.com/emoon/rust_minifb/issues/48)
+- [Issue in rust_minifb repo](https://github.com/emoon/rust_minifb/issues/48)
