@@ -6,6 +6,11 @@ photo/*
 !photo/.gitkeep
 !photo/sawayaka256.jpg
 !photo/steak.jpg
+
 !photo/resized/
 photo/resized/*
 !photo/resized/.gitkeep
+
+!photo/test
+photo/test/resized/*
+!photo/test/resized/.gitkeep
