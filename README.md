@@ -11,7 +11,7 @@ WINDOW_WIDTH=1920
 WINDOW_HEIGHT=1080
 ```
 
-To reduce time to build, use `--release` option. It makes this program much faster.
+To reduce preprocessing time, use `--release` option. It makes this program much faster.
 
 ```bash
 cargo run --release
