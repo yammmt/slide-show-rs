@@ -3,7 +3,7 @@ on: [push, pull_request]
 name: Rust
 
 jobs:
-  clippy_check:
+  linters:
     runs-on: ubuntu-latest
     steps:
       - name: Install packages
@@ -12,12 +12,14 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          components: clippy
+          components: clippy, rustfmt
           override: true
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
+      - name: rustfmt
+        run: cargo fmt -- --check
 
   build_and_test:
     name: Test

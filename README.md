@@ -28,6 +28,15 @@ If you got error(s), please confirm support status of minifb crate ([repo](https
 To avoid `NSInternalInconsistencyException`, test **must** be run with `--test_threads=1` option.
 That is, run `cargo test -- --test-threads=1`.
 
+### Formatter
+
+Use clippy and rustfmt before committing changes.
+
+```bash
+cargo clippy
+cargo fmt
+```
+
 ## Links
 
 The idea of image viewer comes from:
