@@ -20,14 +20,15 @@ fn test_img_filepath() {
     let img_filepaths =
         get_scaled_img_filepath_array("./photo/test/", WindowSize(3840, 2160)).unwrap();
     for entry in glob("photo/test/*.jpg").unwrap() {
-        let filename = &entry
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .replace("photo/test/", "")
-            .replace("resized/", "");
+        let e = entry.unwrap();
+        let filename = e.file_name().unwrap().to_str().unwrap();
+        if filename == "dummy.jpg" {
+            // dummy file (without contents) must be skipped
+            continue;
+        }
         assert!(img_filepaths.iter().any(|v| v.ends_with(filename)));
     }
+    assert!(!img_filepaths.iter().any(|v| v.ends_with("dummy.jpg")));
 }
 
 #[test]

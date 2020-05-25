@@ -49,7 +49,6 @@ where
     }
 }
 
-// TODO: skip invalid image files
 fn get_scaled_img_filepath_array<P>(
     dir: P,
     window_size: WindowSize,
@@ -75,7 +74,22 @@ where
     let mut img_filepaths: Vec<PathBuf> = vec![];
     for entry in glob_pat {
         if let Ok(s) = entry {
-            let mut img = image::open(&s).unwrap();
+            let s_file_name = match s.file_name() {
+                Some(n) => n,
+                None => {
+                    println!("Failed to get filename of {}", s.display());
+                    continue;
+                }
+            };
+
+            let mut img = match image::open(&s) {
+                Ok(i) => i,
+                Err(_) => {
+                    println!("Failed to read image {}", s.display());
+                    continue;
+                }
+            };
+
             if img.dimensions().0 > window_size.0 as u32
                 || img.dimensions().1 > window_size.1 as u32
             {
@@ -91,9 +105,11 @@ where
                     .parent()
                     .unwrap_or_else(|| panic!("Failed to get parent directory of {:?}", s))
                     .join("resized")
-                    .join(s.file_name().unwrap());
-                img.save(&resized_filename).unwrap();
-                img_filepaths.push(resized_filename)
+                    .join(s_file_name);
+                match img.save(&resized_filename) {
+                    Ok(_) => img_filepaths.push(resized_filename),
+                    Err(_) => println!("Failed to save {}", resized_filename.display()),
+                };
             } else {
                 img_filepaths.push(PathBuf::from(&s));
             }
