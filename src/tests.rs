@@ -4,9 +4,15 @@ use super::*;
 // TODO: make sure that huge image is resized to fit given size
 fn test_img_filepath() {
     // ensure all image paths are included
-    let img_filepaths = get_scaled_img_filepath_array("./photo/test/", WindowSize(3840, 2160)).unwrap();
+    let img_filepaths =
+        get_scaled_img_filepath_array("./photo/test/", WindowSize(3840, 2160)).unwrap();
     for entry in glob("photo/test/*.jpg").unwrap() {
-        let filename = &entry.unwrap().to_str().unwrap().replace("photo/test/", "").replace("resized/", "");
+        let filename = &entry
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .replace("photo/test/", "")
+            .replace("resized/", "");
         assert!(img_filepaths.iter().any(|v| v.ends_with(filename)));
     }
 }
