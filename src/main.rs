@@ -6,6 +6,7 @@ use image::{imageops, GenericImageView};
 use minifb::{Key, ScaleMode, Window, WindowOptions};
 use rand::seq::SliceRandom;
 use std::env;
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
@@ -20,24 +21,59 @@ struct ImgBuf {
 #[derive(Copy, Clone, Debug)]
 struct WindowSize(usize, usize);
 
+#[derive(Debug, PartialEq)]
+enum ImageFilepathError<P: AsRef<Path>> {
+    InvalidDirectory(P),
+    InvalidCharset,
+    InvalidGlobPattern(P),
+    NoImageFileFound(P),
+}
+
+impl<P> fmt::Display for ImageFilepathError<P>
+where
+    P: AsRef<Path>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &*self {
+            ImageFilepathError::InvalidDirectory(dir) => {
+                write!(f, "Invalid directory path: {}", dir.as_ref().display())
+            }
+            ImageFilepathError::InvalidCharset => write!(f, "Use UTF-8 for photo directory name"),
+            ImageFilepathError::InvalidGlobPattern(dir) => {
+                write!(f, "Invalid glob pattern: {}", dir.as_ref().display())
+            }
+            ImageFilepathError::NoImageFileFound(dir) => {
+                write!(f, "No image file found in {}", dir.as_ref().display())
+            }
+        }
+    }
+}
+
 // TODO: skip invalid image files
-fn get_scaled_img_filepath_array<P>(dir: P, window_size: WindowSize) -> Result<Vec<PathBuf>, String>
+fn get_scaled_img_filepath_array<P>(
+    dir: P,
+    window_size: WindowSize,
+) -> Result<Vec<PathBuf>, ImageFilepathError<P>>
 where
     P: AsRef<Path>,
 {
     if !dir.as_ref().is_dir() {
-        return Err(String::from("Give me directory path like `./photo/`"));
+        return Err(ImageFilepathError::InvalidDirectory(dir));
     }
+
     let filepath_base = dir.as_ref().join("*.jpg");
+    let pat = match filepath_base.to_str() {
+        Some(p) => p,
+        None => return Err(ImageFilepathError::InvalidCharset),
+    };
+
+    let glob_pat = match glob(pat) {
+        Ok(g) => g,
+        Err(_) => return Err(ImageFilepathError::InvalidGlobPattern(dir)),
+    };
 
     let mut img_filepaths: Vec<PathBuf> = vec![];
-    for entry in glob(
-        filepath_base
-            .to_str()
-            .expect("Failed to parse base filepath"),
-    )
-    .expect("Failed to read glob pattern")
-    {
+    for entry in glob_pat {
         if let Ok(s) = entry {
             let mut img = image::open(&s).unwrap();
             if img.dimensions().0 > window_size.0 as u32
@@ -68,10 +104,7 @@ where
     if !img_filepaths.is_empty() {
         Ok(img_filepaths)
     } else {
-        Err(format!(
-            "No image files found in {}",
-            filepath_base.to_str().unwrap()
-        ))
+        Err(ImageFilepathError::NoImageFileFound(dir))
     }
 }
 

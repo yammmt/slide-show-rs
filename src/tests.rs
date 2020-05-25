@@ -3,6 +3,19 @@ use super::*;
 #[test]
 // TODO: make sure that huge image is resized to fit given size
 fn test_img_filepath() {
+    // failure cases
+    // TODO: are there better ways to test returned type?
+    match get_scaled_img_filepath_array("./.gitignore", WindowSize(3840, 2160)) {
+        Ok(_) => panic!(),
+        Err(e) => assert_eq!(e, ImageFilepathError::InvalidDirectory("./.gitignore")),
+    }
+
+    match get_scaled_img_filepath_array("./src", WindowSize(20, 10)) {
+        Ok(_) => panic!(),
+        Err(e) => assert_eq!(e, ImageFilepathError::NoImageFileFound("./src")),
+    }
+
+    // success case
     // ensure all image paths are included
     let img_filepaths =
         get_scaled_img_filepath_array("./photo/test/", WindowSize(3840, 2160)).unwrap();
