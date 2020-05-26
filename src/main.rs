@@ -21,30 +21,21 @@ struct ImgBuf {
 #[derive(Copy, Clone, Debug)]
 struct WindowSize(usize, usize);
 
-#[derive(Debug, PartialEq)]
-enum ImageFilepathError<P: AsRef<Path>> {
-    InvalidDirectory(P),
+#[derive(Debug)]
+enum ImageFilepathError {
+    InvalidDirectory,
     InvalidCharset,
-    InvalidGlobPattern(P),
-    NoImageFileFound(P),
+    InvalidGlobPattern(glob::PatternError),
+    NoImageFileFound,
 }
 
-impl<P> fmt::Display for ImageFilepathError<P>
-where
-    P: AsRef<Path>,
-{
+impl fmt::Display for ImageFilepathError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            ImageFilepathError::InvalidDirectory(ref dir) => {
-                write!(f, "Invalid directory path: {}", dir.as_ref().display())
-            }
+            ImageFilepathError::InvalidDirectory => write!(f, "Invalid directory path"),
             ImageFilepathError::InvalidCharset => write!(f, "Use UTF-8 for photo directory name"),
-            ImageFilepathError::InvalidGlobPattern(ref dir) => {
-                write!(f, "Invalid glob pattern: {}", dir.as_ref().display())
-            }
-            ImageFilepathError::NoImageFileFound(ref dir) => {
-                write!(f, "No image file found in {}", dir.as_ref().display())
-            }
+            ImageFilepathError::InvalidGlobPattern(ref e) => e.fmt(f),
+            ImageFilepathError::NoImageFileFound => write!(f, "No image file found"),
         }
     }
 }
@@ -52,12 +43,12 @@ where
 fn get_scaled_img_filepath_array<P>(
     dir: P,
     window_size: WindowSize,
-) -> Result<Vec<PathBuf>, ImageFilepathError<P>>
+) -> Result<Vec<PathBuf>, ImageFilepathError>
 where
     P: AsRef<Path>,
 {
     if !dir.as_ref().is_dir() {
-        return Err(ImageFilepathError::InvalidDirectory(dir));
+        return Err(ImageFilepathError::InvalidDirectory);
     }
 
     let filepath_base = dir.as_ref().join("*.jpg");
@@ -68,7 +59,7 @@ where
 
     let glob_pat = match glob(pat) {
         Ok(g) => g,
-        Err(_) => return Err(ImageFilepathError::InvalidGlobPattern(dir)),
+        Err(e) => return Err(ImageFilepathError::InvalidGlobPattern(e)),
     };
 
     let mut img_filepaths: Vec<PathBuf> = vec![];
@@ -120,7 +111,7 @@ where
     if !img_filepaths.is_empty() {
         Ok(img_filepaths)
     } else {
-        Err(ImageFilepathError::NoImageFileFound(dir))
+        Err(ImageFilepathError::NoImageFileFound)
     }
 }
 
@@ -180,7 +171,14 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
     let dir = if args.len() < 2 { "./photo" } else { &args[1] };
-    let mut img_filepaths = get_scaled_img_filepath_array(&dir, size).unwrap();
+    let mut img_filepaths = match get_scaled_img_filepath_array(&dir, size) {
+        Ok(a) => a,
+        // unrecoverable: given directory itself has problem
+        Err(ImageFilepathError::InvalidDirectory) => panic!("Invalid directory path: {}", dir),
+        Err(ImageFilepathError::InvalidCharset) => panic!("Directory path isn't based on UTF-8"),
+        Err(ImageFilepathError::InvalidGlobPattern(e)) => panic!(e.msg),
+        Err(ImageFilepathError::NoImageFileFound) => panic!("No image file found in {}", dir),
+    };
     println!("images found: {:?}", img_filepaths);
     let mut rng = rand::thread_rng();
     img_filepaths.shuffle(&mut rng);

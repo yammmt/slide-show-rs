@@ -5,15 +5,9 @@ use super::*;
 fn test_img_filepath() {
     // failure cases
     // TODO: are there better ways to test returned type?
-    match get_scaled_img_filepath_array("./.gitignore", WindowSize(3840, 2160)) {
-        Ok(_) => panic!(),
-        Err(e) => assert_eq!(e, ImageFilepathError::InvalidDirectory("./.gitignore")),
-    }
-
-    match get_scaled_img_filepath_array("./src", WindowSize(20, 10)) {
-        Ok(_) => panic!(),
-        Err(e) => assert_eq!(e, ImageFilepathError::NoImageFileFound("./src")),
-    }
+    //       error type like `InvalidDirectory` should be confirmed
+    assert!(get_scaled_img_filepath_array("./.gitignore", WindowSize(3840, 2160)).is_err());
+    assert!(get_scaled_img_filepath_array("./src", WindowSize(20, 10)).is_err());
 
     // success case
     // ensure all image paths are included
