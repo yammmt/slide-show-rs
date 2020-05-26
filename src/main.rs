@@ -40,6 +40,12 @@ impl fmt::Display for ImageFilepathError {
     }
 }
 
+impl From<glob::PatternError> for ImageFilepathError {
+    fn from(e: glob::PatternError) -> ImageFilepathError {
+        ImageFilepathError::InvalidGlobPattern(e)
+    }
+}
+
 fn get_scaled_img_filepath_array<P>(
     dir: P,
     window_size: WindowSize,
@@ -56,11 +62,7 @@ where
         Some(p) => p,
         None => return Err(ImageFilepathError::InvalidCharset),
     };
-
-    let glob_pat = match glob(pat) {
-        Ok(g) => g,
-        Err(e) => return Err(ImageFilepathError::InvalidGlobPattern(e)),
-    };
+    let glob_pat = glob(pat)?;
 
     let mut img_filepaths: Vec<PathBuf> = vec![];
     for entry in glob_pat {
