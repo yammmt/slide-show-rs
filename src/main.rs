@@ -34,15 +34,15 @@ where
     P: AsRef<Path>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &*self {
-            ImageFilepathError::InvalidDirectory(dir) => {
+        match &self {
+            ImageFilepathError::InvalidDirectory(ref dir) => {
                 write!(f, "Invalid directory path: {}", dir.as_ref().display())
             }
             ImageFilepathError::InvalidCharset => write!(f, "Use UTF-8 for photo directory name"),
-            ImageFilepathError::InvalidGlobPattern(dir) => {
+            ImageFilepathError::InvalidGlobPattern(ref dir) => {
                 write!(f, "Invalid glob pattern: {}", dir.as_ref().display())
             }
-            ImageFilepathError::NoImageFileFound(dir) => {
+            ImageFilepathError::NoImageFileFound(ref dir) => {
                 write!(f, "No image file found in {}", dir.as_ref().display())
             }
         }
