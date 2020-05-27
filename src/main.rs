@@ -29,6 +29,12 @@ enum ImageFilepathError {
     NoImageFileFound,
 }
 
+#[derive(Debug)]
+enum ImageBufferError {
+    OpenError(image::error::ImageError),
+    RgbParseError,
+}
+
 impl fmt::Display for ImageFilepathError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
@@ -43,6 +49,21 @@ impl fmt::Display for ImageFilepathError {
 impl From<glob::PatternError> for ImageFilepathError {
     fn from(e: glob::PatternError) -> ImageFilepathError {
         ImageFilepathError::InvalidGlobPattern(e)
+    }
+}
+
+impl fmt::Display for ImageBufferError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ImageBufferError::OpenError(ref e) => e.fmt(f),
+            ImageBufferError::RgbParseError => write!(f, "Failed to parse image file as RGB8"),
+        }
+    }
+}
+
+impl From<image::error::ImageError> for ImageBufferError {
+    fn from(e: image::error::ImageError) -> ImageBufferError {
+        ImageBufferError::OpenError(e)
     }
 }
 
@@ -117,13 +138,15 @@ where
     }
 }
 
-// TODO: return `Result` to run recovery process
-fn image_buffer_from_filepath<P>(filepath: P) -> ImgBuf
+fn image_buffer_from_filepath<P>(filepath: P) -> Result<ImgBuf, ImageBufferError>
 where
     P: AsRef<Path>,
 {
-    let img = image::open(&filepath).unwrap();
-    let rgb = img.as_rgb8().unwrap();
+    let img = image::open(&filepath)?;
+    let rgb = match img.as_rgb8() {
+        Some(r) => r,
+        None => return Err(ImageBufferError::RgbParseError),
+    };
 
     let (width, height) = rgb.dimensions();
     let mut buf: Vec<u32> = vec![];
@@ -135,11 +158,11 @@ where
             );
         }
     }
-    ImgBuf {
+    Ok(ImgBuf {
         buf,
         width: width as usize,
         height: height as usize,
-    }
+    })
 }
 
 fn new_window(size: WindowSize) -> Window {
@@ -186,7 +209,8 @@ fn main() {
     img_filepaths.shuffle(&mut rng);
 
     // load first image before opening window
-    let mut img_buf = image_buffer_from_filepath(img_filepaths.first().unwrap());
+    // `img.filepaths.first()` never fail because empty error is inspected above
+    let mut img_buf = image_buffer_from_filepath(img_filepaths.first().unwrap()).unwrap();
 
     let mut window = new_window(size);
     let mut img_idx = 0;
@@ -194,8 +218,11 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if start_time.elapsed().unwrap() >= Duration::from_secs(5) {
             img_idx = (img_idx + 1) % img_filepaths.len();
-            // TODO: if error is detected, skip its image and try to read next one
-            img_buf = image_buffer_from_filepath(&img_filepaths[img_idx]);
+            // if error is detected, skip its image and try to read next one
+            img_buf = match image_buffer_from_filepath(&img_filepaths[img_idx]) {
+                Ok(i) => i,
+                Err(_) => continue,
+            };
             start_time = SystemTime::now();
         }
         match window.update_with_buffer(&img_buf.buf, img_buf.width, img_buf.height) {
