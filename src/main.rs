@@ -7,6 +7,7 @@ use minifb::{Key, ScaleMode, Window, WindowOptions};
 use rand::seq::SliceRandom;
 use std::env;
 use std::fmt;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
@@ -104,10 +105,23 @@ where
                 }
             };
 
+            let resized_dir = s
+                .parent()
+                .unwrap_or_else(|| panic!("Failed to get parent directory of {:?}", s))
+                .join("resized");
             if img.dimensions().0 > window_size.0 as u32
                 || img.dimensions().1 > window_size.1 as u32
             {
                 // resize big images to load fast
+
+                // create `resized` directory
+                if !Path::new(&resized_dir).exists() {
+                    fs::create_dir(&resized_dir).unwrap_or_else(|_| {
+                        panic!("Failed to create directory {}", resized_dir.display())
+                    });
+                    println!("created directory {}", resized_dir.display());
+                }
+
                 // for resize algorithm detail, see official documents at
                 // https://docs.rs/image/0.23.4/image/imageops/enum.FilterType.html#examples
                 img = img.resize(
@@ -115,11 +129,7 @@ where
                     window_size.1 as u32,
                     imageops::CatmullRom,
                 );
-                let resized_filename = s
-                    .parent()
-                    .unwrap_or_else(|| panic!("Failed to get parent directory of {:?}", s))
-                    .join("resized")
-                    .join(s_file_name);
+                let resized_filename = resized_dir.join(s_file_name);
                 match img.save(&resized_filename) {
                     Ok(_) => img_filepaths.push(resized_filename),
                     Err(_) => println!("Failed to save {}", resized_filename.display()),
