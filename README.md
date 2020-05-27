@@ -2,7 +2,9 @@
 
 ![Rust](https://github.com/yammmt/slide-show-rs/workflows/Rust/badge.svg)
 
-Show images
+Show images continuously like:
+
+![example image](./img/example.gif)
 
 ## Usage
 
