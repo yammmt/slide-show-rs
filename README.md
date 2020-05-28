@@ -27,7 +27,9 @@ If you got error(s), please confirm support status of minifb crate ([repo](https
 
 ## Test
 
-To avoid `NSInternalInconsistencyException`, test **must** be run with `--test_threads=1` option.
+In many cases such as this repo's GitHub Actions, `cargo test` is enough.
+
+But, if you got `NSInternalInconsistencyException` (macOS) and failed to test, test **must** be run with `--test_threads=1` option.
 That is, run `cargo test -- --test-threads=1`.
 
 ### Formatter
