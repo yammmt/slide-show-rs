@@ -1,6 +1,3 @@
-extern crate glob;
-extern crate image;
-
 use glob::glob;
 use image::{imageops, GenericImageView};
 use log::{info, warn};
