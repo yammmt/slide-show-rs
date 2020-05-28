@@ -3,6 +3,7 @@ extern crate image;
 
 use glob::glob;
 use image::{imageops, GenericImageView};
+use log::{info, warn};
 use minifb::{Key, KeyRepeat, ScaleMode, Window, WindowOptions};
 use rand::seq::SliceRandom;
 use std::env;
@@ -92,7 +93,7 @@ where
             let s_file_name = match s.file_name() {
                 Some(n) => n,
                 None => {
-                    println!("Failed to get filename of {}", s.display());
+                    warn!("Failed to get filename of {}", s.display());
                     continue;
                 }
             };
@@ -100,7 +101,7 @@ where
             let mut img = match image::open(&s) {
                 Ok(i) => i,
                 Err(_) => {
-                    println!("Failed to read image {}", s.display());
+                    warn!("Failed to read image {}", s.display());
                     continue;
                 }
             };
@@ -119,7 +120,7 @@ where
                     fs::create_dir(&resized_dir).unwrap_or_else(|_| {
                         panic!("Failed to create directory {}", resized_dir.display())
                     });
-                    println!("created directory {}", resized_dir.display());
+                    info!("created directory {}", resized_dir.display());
                 }
 
                 // for resize algorithm detail, see official documents at
@@ -132,13 +133,13 @@ where
                 let resized_filename = resized_dir.join(s_file_name);
                 match img.save(&resized_filename) {
                     Ok(_) => img_filepaths.push(resized_filename),
-                    Err(_) => println!("Failed to save {}", resized_filename.display()),
+                    Err(_) => warn!("Failed to save {}", resized_filename.display()),
                 };
             } else {
                 img_filepaths.push(PathBuf::from(&s));
             }
         } else {
-            println!("Failed to parse path {:?}", entry);
+            warn!("Failed to parse path {:?}", entry);
         }
     }
     if !img_filepaths.is_empty() {
@@ -190,6 +191,8 @@ fn new_window(size: WindowSize) -> Window {
 }
 
 fn main() {
+    simple_logger::init().unwrap();
+
     // get window size
     let w = dotenv::var("WINDOW_WIDTH");
     let h = dotenv::var("WINDOW_HEIGHT");
@@ -214,7 +217,7 @@ fn main() {
         Err(ImageFilepathError::InvalidGlobPattern(e)) => panic!(e.msg),
         Err(ImageFilepathError::NoImageFileFound) => panic!("No image file found in {}", dir),
     };
-    println!("images found: {:?}", img_filepaths);
+    info!("images found: {:?}", img_filepaths);
     let mut rng = rand::thread_rng();
     img_filepaths.shuffle(&mut rng);
 
@@ -231,19 +234,22 @@ fn main() {
             || window.is_key_pressed(Key::Right, KeyRepeat::No)
         {
             interval_sec -= 0.5;
-            println!("Speed up: {}s", interval_sec)
+            info!("Speed up: {}s", interval_sec)
         } else if window.is_key_pressed(Key::Down, KeyRepeat::No)
             || window.is_key_pressed(Key::Left, KeyRepeat::No)
         {
             interval_sec += 0.5;
-            println!("Speed down: {}s", interval_sec);
+            info!("Speed down: {}s", interval_sec);
         }
         if start_time.elapsed().unwrap() >= Duration::from_secs_f32(interval_sec) {
             img_idx = (img_idx + 1) % img_filepaths.len();
             // if error is detected, skip its image and try to read next one
             img_buf = match image_buffer_from_filepath(&img_filepaths[img_idx]) {
                 Ok(i) => i,
-                Err(_) => continue,
+                Err(_) => {
+                    warn!("Failed to read image {}", img_filepaths[img_idx].display());
+                    continue;
+                }
             };
             start_time = SystemTime::now();
         }
