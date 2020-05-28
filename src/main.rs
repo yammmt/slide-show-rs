@@ -3,7 +3,7 @@ extern crate image;
 
 use glob::glob;
 use image::{imageops, GenericImageView};
-use minifb::{Key, ScaleMode, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, ScaleMode, Window, WindowOptions};
 use rand::seq::SliceRandom;
 use std::env;
 use std::fmt;
@@ -224,9 +224,21 @@ fn main() {
 
     let mut window = new_window(size);
     let mut img_idx = 0;
+    let mut interval_sec: f32 = 5.0;
     let mut start_time = SystemTime::now();
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        if start_time.elapsed().unwrap() >= Duration::from_secs(5) {
+        if window.is_key_pressed(Key::Up, KeyRepeat::No)
+            || window.is_key_pressed(Key::Right, KeyRepeat::No)
+        {
+            interval_sec -= 0.5;
+            println!("Speed up: {}s", interval_sec)
+        } else if window.is_key_pressed(Key::Down, KeyRepeat::No)
+            || window.is_key_pressed(Key::Left, KeyRepeat::No)
+        {
+            interval_sec += 0.5;
+            println!("Speed down: {}s", interval_sec);
+        }
+        if start_time.elapsed().unwrap() >= Duration::from_secs_f32(interval_sec) {
             img_idx = (img_idx + 1) % img_filepaths.len();
             // if error is detected, skip its image and try to read next one
             img_buf = match image_buffer_from_filepath(&img_filepaths[img_idx]) {
