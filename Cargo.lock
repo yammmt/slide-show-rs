@@ -784,7 +784,9 @@ dependencies = [
  "image",
  "log",
  "minifb",
+ "num_cpus",
  "rand 0.7.3",
+ "rayon",
  "simple_logger",
 ]
 

@@ -3,6 +3,7 @@ use image::{imageops, GenericImageView};
 use log::{info, warn};
 use minifb::{Key, KeyRepeat, ScaleMode, Window, WindowOptions};
 use rand::seq::SliceRandom;
+use rayon::prelude::*;
 use std::env;
 use std::fmt;
 use std::fs;
@@ -157,15 +158,20 @@ where
     };
 
     let (width, height) = rgb.dimensions();
-    let mut buf: Vec<u32> = vec![];
-    for y in 0..height {
-        for x in 0..width {
-            let pixel = rgb.get_pixel(x as u32, y as u32);
-            buf.push(
-                0xFF00_0000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32),
-            );
+    let mut buf: Vec<u32> = vec![0; (width * height) as usize];
+
+    let threads = num_cpus::get();
+    let rows_per_band = height / threads as u32 + 1;
+    let bands: Vec<&mut [u32]> = buf.chunks_mut((rows_per_band * width) as usize).collect();
+    bands.into_par_iter().enumerate().for_each(|(i, band)| {
+        for (j, b) in band.iter_mut().enumerate() {
+            let x = j as u32 % width;
+            let y = i as u32 * rows_per_band + j as u32 / width;
+            let pixel = rgb.get_pixel(x, y);
+            *b = 0xFF00_0000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32);
         }
-    }
+    });
+
     Ok(ImgBuf {
         buf,
         width: width as usize,
