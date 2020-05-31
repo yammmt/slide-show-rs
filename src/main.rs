@@ -74,6 +74,7 @@ fn get_scaled_img_filepath_array<P>(
 where
     P: AsRef<Path>,
 {
+    let begin_time = SystemTime::now();
     if !dir.as_ref().is_dir() {
         return Err(ImageFilepathError::InvalidDirectory);
     }
@@ -147,6 +148,10 @@ where
         })
         .collect();
     if !img_filepaths.is_empty() {
+        info!(
+            "Time for image preprocessing: {:?}",
+            begin_time.elapsed().unwrap()
+        );
         Ok(img_filepaths)
     } else {
         Err(ImageFilepathError::NoImageFileFound)
