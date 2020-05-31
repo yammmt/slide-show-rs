@@ -83,63 +83,69 @@ where
         Some(p) => p,
         None => return Err(ImageFilepathError::InvalidCharset),
     };
-    let glob_pat = glob(pat)?;
+    let glob_pat: Vec<Result<PathBuf, _>> = glob(pat)?.collect();
 
-    let mut img_filepaths: Vec<PathBuf> = vec![];
-    for entry in glob_pat {
-        if let Ok(s) = entry {
-            let s_file_name = match s.file_name() {
-                Some(n) => n,
-                None => {
-                    warn!("Failed to get filename of {}", s.display());
-                    continue;
-                }
-            };
-
-            let mut img = match image::open(&s) {
-                Ok(i) => i,
-                Err(_) => {
-                    warn!("Failed to read image {}", s.display());
-                    continue;
-                }
-            };
-
-            let resized_dir = s
-                .parent()
-                .unwrap_or_else(|| panic!("Failed to get parent directory of {:?}", s))
-                .join("resized");
-            if img.dimensions().0 > window_size.0 as u32
-                || img.dimensions().1 > window_size.1 as u32
-            {
-                // resize big images to load fast
-
-                // create `resized` directory
-                if !Path::new(&resized_dir).exists() {
-                    fs::create_dir(&resized_dir).unwrap_or_else(|_| {
-                        panic!("Failed to create directory {}", resized_dir.display())
-                    });
-                    info!("created directory {}", resized_dir.display());
-                }
-
-                // for resize algorithm detail, see official documents at
-                // https://docs.rs/image/0.23.4/image/imageops/enum.FilterType.html#examples
-                img = img.resize(
-                    window_size.0 as u32,
-                    window_size.1 as u32,
-                    imageops::CatmullRom,
-                );
-                let resized_filename = resized_dir.join(s_file_name);
-                match img.save(&resized_filename) {
-                    Ok(_) => img_filepaths.push(resized_filename),
-                    Err(_) => warn!("Failed to save {}", resized_filename.display()),
+    let img_filepaths: Vec<PathBuf> = glob_pat
+        .into_par_iter()
+        .filter_map(|entry| {
+            if let Ok(s) = entry {
+                let s_file_name = match s.file_name() {
+                    Some(n) => n,
+                    None => {
+                        warn!("Failed to get filename of {}", s.display());
+                        return None;
+                    }
                 };
+
+                let mut img = match image::open(&s) {
+                    Ok(i) => i,
+                    Err(_) => {
+                        warn!("Failed to read image {}", s.display());
+                        return None;
+                    }
+                };
+
+                let resized_dir = s
+                    .parent()
+                    .unwrap_or_else(|| panic!("Failed to get parent directory of {:?}", s))
+                    .join("resized");
+                if img.dimensions().0 > window_size.0 as u32
+                    || img.dimensions().1 > window_size.1 as u32
+                {
+                    // resize big images to load fast
+
+                    // create `resized` directory
+                    if !Path::new(&resized_dir).exists() {
+                        fs::create_dir(&resized_dir).unwrap_or_else(|_| {
+                            panic!("Failed to create directory {}", resized_dir.display())
+                        });
+                        info!("created directory {}", resized_dir.display());
+                    }
+
+                    // for resize algorithm detail, see official documents at
+                    // https://docs.rs/image/0.23.4/image/imageops/enum.FilterType.html#examples
+                    img = img.resize(
+                        window_size.0 as u32,
+                        window_size.1 as u32,
+                        imageops::CatmullRom,
+                    );
+                    let resized_filename = resized_dir.join(s_file_name);
+                    match img.save(&resized_filename) {
+                        Ok(_) => Some(resized_filename),
+                        Err(_) => {
+                            warn!("Failed to save {}", resized_filename.display());
+                            None
+                        }
+                    }
+                } else {
+                    Some(PathBuf::from(&s))
+                }
             } else {
-                img_filepaths.push(PathBuf::from(&s));
+                warn!("Failed to parse path {:?}", entry);
+                None
             }
-        } else {
-            warn!("Failed to parse path {:?}", entry);
-        }
-    }
+        })
+        .collect();
     if !img_filepaths.is_empty() {
         Ok(img_filepaths)
     } else {
