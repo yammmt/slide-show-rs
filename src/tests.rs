@@ -38,12 +38,23 @@ fn test_img_buffer() {
         image_buffer_from_filepath(tx1, rx2);
     });
 
-    tx2.send("photo/test/sawayaka256.jpg").unwrap();
-    let img_buf = rx1.recv().unwrap().unwrap();
+    tx2.send(ThreadMessage::Filepath("photo/test/sawayaka256.jpg"))
+        .unwrap();
+    match rx1.recv().unwrap() {
+        ThreadMessage::ImageBuffer(ib) => {
+            if let Ok(img_buf) = ib {
+                // there are NO practical ways to test image buffer itself...
+                assert_eq!(img_buf.width, 256);
+                assert_eq!(img_buf.height, 256);
+            } else {
+                assert!(false);
+            }
+        }
+        _ => assert!(false),
+    }
 
-    // there are NO practical ways to test image buffer itself...
-    assert_eq!(img_buf.width, 256);
-    assert_eq!(img_buf.height, 256);
+    tx2.send(ThreadMessage::Close).unwrap();
+    rx1.recv().unwrap();
 }
 
 #[test]
@@ -54,7 +65,15 @@ fn test_img_buffer_with_wrong_filepath() {
         image_buffer_from_filepath(tx1, rx2);
     });
 
-    tx2.send(".gitignore").unwrap();
-    // TODO: make sure that error is `ImageBufferError::OpenError` type
-    assert!(rx1.recv().unwrap().is_err());
+    tx2.send(ThreadMessage::Filepath(".gitignore")).unwrap();
+    match rx1.recv().unwrap() {
+        ThreadMessage::ImageBuffer(ib) => {
+            // TODO: make sure that error is `ImageBufferError::OpenError` type
+            assert!(ib.is_err());
+        }
+        _ => assert!(false),
+    }
+
+    tx2.send(ThreadMessage::Close).unwrap();
+    rx1.recv().unwrap();
 }

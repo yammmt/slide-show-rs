@@ -37,6 +37,16 @@ enum ImageBufferError {
     RgbParseError,
 }
 
+// couldn't use `#[derive(Debug)]` because of `ImgBuf`
+enum ThreadMessage<P>
+where
+    P: AsRef<Path>,
+{
+    Filepath(P),
+    ImageBuffer(Result<ImgBuf, ImageBufferError>),
+    Close,
+}
+
 impl fmt::Display for ImageFilepathError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
@@ -161,25 +171,37 @@ where
 }
 
 fn image_buffer_from_filepath<P>(
-    tx: mpsc::Sender<Result<ImgBuf, ImageBufferError>>,
-    rx: mpsc::Receiver<P>,
+    tx: mpsc::Sender<ThreadMessage<P>>,
+    rx: mpsc::Receiver<ThreadMessage<P>>,
 ) where
     P: AsRef<Path>,
 {
     loop {
-        let filepath = rx.recv().unwrap();
+        let received_data = rx.recv().unwrap();
+        let filepath = match received_data {
+            ThreadMessage::Filepath(p) => p,
+            ThreadMessage::Close => {
+                tx.send(ThreadMessage::Close).unwrap();
+                return;
+            }
+            _ => panic!("Received invalid message from main"),
+        };
 
         let img = match image::open(&filepath) {
             Ok(i) => i,
             Err(e) => {
-                tx.send(Err(ImageBufferError::from(e))).unwrap();
+                tx.send(ThreadMessage::ImageBuffer(Err(ImageBufferError::from(e))))
+                    .unwrap();
                 continue;
             }
         };
         let rgb = match img.as_rgb8() {
             Some(r) => r,
             None => {
-                tx.send(Err(ImageBufferError::RgbParseError)).unwrap();
+                tx.send(ThreadMessage::ImageBuffer(Err(
+                    ImageBufferError::RgbParseError,
+                )))
+                .unwrap();
                 continue;
             }
         };
@@ -202,11 +224,11 @@ fn image_buffer_from_filepath<P>(
             }
         });
 
-        tx.send(Ok(ImgBuf {
+        tx.send(ThreadMessage::ImageBuffer(Ok(ImgBuf {
             buf,
             width: width as usize,
             height: height as usize,
-        }))
+        })))
         .unwrap()
     }
 }
@@ -266,23 +288,32 @@ fn main() {
     // load first image before opening window
     let mut img_buf: ImgBuf;
     let mut img_idx = 0;
-    tx_to_buf_func.send(img_filepaths[img_idx].clone()).unwrap();
+    tx_to_buf_func
+        .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+        .unwrap();
     loop {
         let res = rx_from_buf_func.recv().unwrap();
         match res {
-            Ok(ib) => {
-                img_buf = ib;
-                img_idx = (img_idx + 1) % img_filepaths.len();
-                tx_to_buf_func.send(img_filepaths[img_idx].clone()).unwrap();
-                break;
-            }
-            Err(_) => {
-                img_idx = (img_idx + 1) % img_filepaths.len();
-                if img_idx == 0 {
-                    panic!("Failed to read all of found images");
+            ThreadMessage::ImageBuffer(img_buf_result) => match img_buf_result {
+                Ok(ib) => {
+                    img_buf = ib;
+                    img_idx = (img_idx + 1) % img_filepaths.len();
+                    tx_to_buf_func
+                        .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+                        .unwrap();
+                    break;
                 }
-                tx_to_buf_func.send(img_filepaths[img_idx].clone()).unwrap();
-            }
+                Err(_) => {
+                    img_idx = (img_idx + 1) % img_filepaths.len();
+                    if img_idx == 0 {
+                        panic!("Failed to read all of found images");
+                    }
+                    tx_to_buf_func
+                        .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+                        .unwrap();
+                }
+            },
+            _ => panic!("Received invalid message from image buffer function"),
         }
     }
 
@@ -312,20 +343,27 @@ fn main() {
         // make full use of free time to read the next image buffer.
         if let Ok(res) = rx_from_buf_func.try_recv() {
             match res {
-                Ok(ib) => next_img_buf = ib,
-                Err(e) => {
-                    // try to read next image of next image
-                    info!("error: {:?}", e);
-                    img_idx = (img_idx + 1) % img_filepaths.len();
-                    tx_to_buf_func.send(img_filepaths[img_idx].clone()).unwrap();
-                }
+                ThreadMessage::ImageBuffer(img_buf_result) => match img_buf_result {
+                    Ok(ib) => next_img_buf = ib,
+                    Err(e) => {
+                        // try to read next image of next image
+                        info!("error: {:?}", e);
+                        img_idx = (img_idx + 1) % img_filepaths.len();
+                        tx_to_buf_func
+                            .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+                            .unwrap();
+                    }
+                },
+                _ => panic!("Received invalid message from image buffer function"),
             }
         };
 
         if start_time.elapsed().unwrap() >= Duration::from_secs_f32(interval_sec) {
             img_idx = (img_idx + 1) % img_filepaths.len();
             img_buf = next_img_buf.clone();
-            tx_to_buf_func.send(img_filepaths[img_idx].clone()).unwrap();
+            tx_to_buf_func
+                .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+                .unwrap();
             start_time = SystemTime::now();
         }
         match window.update_with_buffer(&img_buf.buf, img_buf.width, img_buf.height) {
@@ -333,4 +371,8 @@ fn main() {
             Err(e) => panic!("{}", e),
         }
     }
+
+    // close thread
+    tx_to_buf_func.send(ThreadMessage::Close).unwrap();
+    rx_from_buf_func.recv().unwrap();
 }
