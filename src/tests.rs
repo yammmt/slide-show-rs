@@ -32,7 +32,15 @@ fn test_img_filepath_with_wrong_dir() {
 
 #[test]
 fn test_img_buffer() {
-    let img_buf = image_buffer_from_filepath("photo/test/sawayaka256.jpg").unwrap();
+    let (tx1, rx1) = mpsc::channel();
+    let (tx2, rx2) = mpsc::channel();
+    rayon::spawn(move || {
+        image_buffer_from_filepath(tx1, rx2);
+    });
+
+    tx2.send("photo/test/sawayaka256.jpg").unwrap();
+    let img_buf = rx1.recv().unwrap().unwrap();
+
     // there are NO practical ways to test image buffer itself...
     assert_eq!(img_buf.width, 256);
     assert_eq!(img_buf.height, 256);
@@ -40,6 +48,13 @@ fn test_img_buffer() {
 
 #[test]
 fn test_img_buffer_with_wrong_filepath() {
+    let (tx1, rx1) = mpsc::channel();
+    let (tx2, rx2) = mpsc::channel();
+    rayon::spawn(move || {
+        image_buffer_from_filepath(tx1, rx2);
+    });
+
+    tx2.send(".gitignore").unwrap();
     // TODO: make sure that error is `ImageBufferError::OpenError` type
-    assert!(image_buffer_from_filepath(".gitignore").is_err());
+    assert!(rx1.recv().unwrap().is_err());
 }
