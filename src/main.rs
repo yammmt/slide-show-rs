@@ -8,11 +8,13 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::time::{Duration, SystemTime};
 
 #[cfg(test)]
 mod tests;
 
+#[derive(Clone)]
 struct ImgBuf {
     pub buf: Vec<u32>,
     pub width: usize,
@@ -33,6 +35,16 @@ enum ImageFilepathError {
 enum ImageBufferError {
     OpenError(image::error::ImageError),
     RgbParseError,
+}
+
+// couldn't use `#[derive(Debug)]` because of `ImgBuf`
+enum ThreadMessage<P>
+where
+    P: AsRef<Path>,
+{
+    Filepath(P),
+    ImageBuffer(Result<ImgBuf, ImageBufferError>),
+    Close,
 }
 
 impl fmt::Display for ImageFilepathError {
@@ -158,36 +170,67 @@ where
     }
 }
 
-fn image_buffer_from_filepath<P>(filepath: P) -> Result<ImgBuf, ImageBufferError>
-where
+fn image_buffer_from_filepath<P>(
+    tx: mpsc::Sender<ThreadMessage<P>>,
+    rx: mpsc::Receiver<ThreadMessage<P>>,
+) where
     P: AsRef<Path>,
 {
-    let img = image::open(&filepath)?;
-    let rgb = match img.as_rgb8() {
-        Some(r) => r,
-        None => return Err(ImageBufferError::RgbParseError),
-    };
+    loop {
+        let received_data = rx.recv().unwrap();
+        let filepath = match received_data {
+            ThreadMessage::Filepath(p) => p,
+            ThreadMessage::Close => {
+                tx.send(ThreadMessage::Close).unwrap();
+                return;
+            }
+            _ => panic!("Received invalid message from main"),
+        };
 
-    let (width, height) = rgb.dimensions();
-    let mut buf: Vec<u32> = vec![0; (width * height) as usize];
+        let img = match image::open(&filepath) {
+            Ok(i) => i,
+            Err(e) => {
+                tx.send(ThreadMessage::ImageBuffer(Err(ImageBufferError::from(e))))
+                    .unwrap();
+                continue;
+            }
+        };
+        let rgb = match img.as_rgb8() {
+            Some(r) => r,
+            None => {
+                tx.send(ThreadMessage::ImageBuffer(Err(
+                    ImageBufferError::RgbParseError,
+                )))
+                .unwrap();
+                continue;
+            }
+        };
 
-    let threads = num_cpus::get();
-    let rows_per_band = height / threads as u32 + 1;
-    let bands: Vec<&mut [u32]> = buf.chunks_mut((rows_per_band * width) as usize).collect();
-    bands.into_par_iter().enumerate().for_each(|(i, band)| {
-        for (j, b) in band.iter_mut().enumerate() {
-            let x = j as u32 % width;
-            let y = i as u32 * rows_per_band + j as u32 / width;
-            let pixel = rgb.get_pixel(x, y);
-            *b = 0xFF00_0000 | (pixel[0] as u32) << 16 | (pixel[1] as u32) << 8 | (pixel[2] as u32);
-        }
-    });
+        let (width, height) = rgb.dimensions();
+        let mut buf: Vec<u32> = vec![0; (width * height) as usize];
 
-    Ok(ImgBuf {
-        buf,
-        width: width as usize,
-        height: height as usize,
-    })
+        let threads = num_cpus::get();
+        let rows_per_band = height / threads as u32 + 1;
+        let bands: Vec<&mut [u32]> = buf.chunks_mut((rows_per_band * width) as usize).collect();
+        bands.into_par_iter().enumerate().for_each(|(i, band)| {
+            for (j, b) in band.iter_mut().enumerate() {
+                let x = j as u32 % width;
+                let y = i as u32 * rows_per_band + j as u32 / width;
+                let pixel = rgb.get_pixel(x, y);
+                *b = 0xFF00_0000
+                    | (pixel[0] as u32) << 16
+                    | (pixel[1] as u32) << 8
+                    | (pixel[2] as u32);
+            }
+        });
+
+        tx.send(ThreadMessage::ImageBuffer(Ok(ImgBuf {
+            buf,
+            width: width as usize,
+            height: height as usize,
+        })))
+        .unwrap()
+    }
 }
 
 fn new_window(size: WindowSize) -> Window {
@@ -235,13 +278,52 @@ fn main() {
     let mut rng = rand::thread_rng();
     img_filepaths.shuffle(&mut rng);
 
+    // use threads to prepare image buffer before it is needed
+    let (tx_to_main, rx_from_buf_func) = mpsc::channel();
+    let (tx_to_buf_func, rx_from_main) = mpsc::channel();
+    rayon::spawn(move || {
+        image_buffer_from_filepath(tx_to_main, rx_from_main);
+    });
+
     // load first image before opening window
-    // `img.filepaths.first()` never fail because empty error is inspected above
-    let mut img_buf = image_buffer_from_filepath(img_filepaths.first().unwrap()).unwrap();
+    let mut img_buf: ImgBuf;
+    let mut img_idx = 0;
+    tx_to_buf_func
+        .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+        .unwrap();
+    loop {
+        let res = rx_from_buf_func.recv().unwrap();
+        match res {
+            ThreadMessage::ImageBuffer(img_buf_result) => match img_buf_result {
+                Ok(ib) => {
+                    img_buf = ib;
+                    img_idx = (img_idx + 1) % img_filepaths.len();
+                    tx_to_buf_func
+                        .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+                        .unwrap();
+                    break;
+                }
+                Err(_) => {
+                    img_idx = (img_idx + 1) % img_filepaths.len();
+                    if img_idx == 0 {
+                        panic!("Failed to read all of found images");
+                    }
+                    tx_to_buf_func
+                        .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+                        .unwrap();
+                }
+            },
+            _ => panic!("Received invalid message from image buffer function"),
+        }
+    }
 
     let mut window = new_window(size);
-    let mut img_idx = 0;
     let mut interval_sec: f32 = 5.0;
+    let mut next_img_buf = ImgBuf {
+        buf: vec![0; 1],
+        width: 1,
+        height: 1,
+    };
     let mut start_time = SystemTime::now();
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::Up, KeyRepeat::No)
@@ -255,16 +337,33 @@ fn main() {
             interval_sec += 0.5;
             info!("Speed down: {}s", interval_sec);
         }
+
+        // If receiving buffer here, we have to `clone` this value again when
+        // setting time passes, in the following process. However, it's good to
+        // make full use of free time to read the next image buffer.
+        if let Ok(res) = rx_from_buf_func.try_recv() {
+            match res {
+                ThreadMessage::ImageBuffer(img_buf_result) => match img_buf_result {
+                    Ok(ib) => next_img_buf = ib,
+                    Err(e) => {
+                        // try to read next image of next image
+                        info!("error: {:?}", e);
+                        img_idx = (img_idx + 1) % img_filepaths.len();
+                        tx_to_buf_func
+                            .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+                            .unwrap();
+                    }
+                },
+                _ => panic!("Received invalid message from image buffer function"),
+            }
+        };
+
         if start_time.elapsed().unwrap() >= Duration::from_secs_f32(interval_sec) {
             img_idx = (img_idx + 1) % img_filepaths.len();
-            // if error is detected, skip its image and try to read next one
-            img_buf = match image_buffer_from_filepath(&img_filepaths[img_idx]) {
-                Ok(i) => i,
-                Err(_) => {
-                    warn!("Failed to read image {}", img_filepaths[img_idx].display());
-                    continue;
-                }
-            };
+            img_buf = next_img_buf.clone();
+            tx_to_buf_func
+                .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
+                .unwrap();
             start_time = SystemTime::now();
         }
         match window.update_with_buffer(&img_buf.buf, img_buf.width, img_buf.height) {
@@ -272,4 +371,8 @@ fn main() {
             Err(e) => panic!("{}", e),
         }
     }
+
+    // close thread
+    tx_to_buf_func.send(ThreadMessage::Close).unwrap();
+    rx_from_buf_func.recv().unwrap();
 }
