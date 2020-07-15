@@ -35,5 +35,17 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: cargo test
+      - name: cargo test (stable)
+        run: cargo test --verbose
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: beta
+          override: true
+      - name: cargo test (beta)
+        run: cargo test --verbose
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - name: cargo test (nightly)
         run: cargo test --verbose
