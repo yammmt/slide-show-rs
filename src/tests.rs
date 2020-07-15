@@ -47,10 +47,10 @@ fn test_img_buffer() {
                 assert_eq!(img_buf.width, 256);
                 assert_eq!(img_buf.height, 256);
             } else {
-                assert!(false);
+                panic!();
             }
         }
-        _ => assert!(false),
+        _ => panic!(),
     }
 
     tx2.send(ThreadMessage::Close).unwrap();
@@ -71,7 +71,7 @@ fn test_img_buffer_with_wrong_filepath() {
             // TODO: make sure that error is `ImageBufferError::OpenError` type
             assert!(ib.is_err());
         }
-        _ => assert!(false),
+        _ => panic!(),
     }
 
     tx2.send(ThreadMessage::Close).unwrap();
