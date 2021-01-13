@@ -4,6 +4,7 @@ use log::{info, warn};
 use minifb::{Key, KeyRepeat, ScaleMode, Window, WindowOptions};
 use rand::seq::SliceRandom;
 use rayon::prelude::*;
+use simple_logger::SimpleLogger;
 use std::env;
 use std::fmt;
 use std::fs;
@@ -248,7 +249,7 @@ fn new_window(size: WindowSize) -> Window {
 }
 
 fn main() {
-    simple_logger::init().unwrap();
+    SimpleLogger::new().init().unwrap();
 
     // get window size
     let w = dotenv::var("WINDOW_WIDTH");
