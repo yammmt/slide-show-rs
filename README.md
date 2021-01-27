@@ -27,7 +27,7 @@ If you got error(s), please confirm support status of minifb crate ([repo](https
 
 ### Speed
 
-The default speed is 0.5s, that is, shown image is changed if 5.0s passes.
+The default speed is 5.0s, that is, shown image is changed if 5.0s passes.
 To change this speed, please input key :arrow_up: or :arrow_right: to increase speed by 0.5s, input key :arrow_down: or :arrow_left: to decrease speed by 0.5s.
 
 Note that real speed is affected by your machine spec.
