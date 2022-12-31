@@ -272,7 +272,7 @@ fn main() {
         // unrecoverable: given directory itself has problem
         Err(ImageFilepathError::InvalidDirectory) => panic!("Invalid directory path: {}", dir),
         Err(ImageFilepathError::InvalidCharset) => panic!("Directory path isn't based on UTF-8"),
-        Err(ImageFilepathError::InvalidGlobPattern(e)) => panic!(e.msg),
+        Err(ImageFilepathError::InvalidGlobPattern(e)) => panic!("{}", e.msg),
         Err(ImageFilepathError::NoImageFileFound) => panic!("No image file found in {}", dir),
     };
     info!("images found: {:?}", img_filepaths);
