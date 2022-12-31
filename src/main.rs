@@ -267,7 +267,7 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
     let dir = if args.len() < 2 { "./photo" } else { &args[1] };
-    let mut img_filepaths = match get_scaled_img_filepath_array(&dir, size) {
+    let mut img_filepaths = match get_scaled_img_filepath_array(dir, size) {
         Ok(a) => a,
         // unrecoverable: given directory itself has problem
         Err(ImageFilepathError::InvalidDirectory) => panic!("Invalid directory path: {}", dir),
