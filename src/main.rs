@@ -330,7 +330,7 @@ fn main() {
         if window.is_key_pressed(Key::Up, KeyRepeat::No)
             || window.is_key_pressed(Key::Right, KeyRepeat::No)
         {
-            interval_sec -= 0.5;
+            interval_sec = 0.5f32.max(interval_sec - 0.5);
             info!("Speed up: {}s", interval_sec)
         } else if window.is_key_pressed(Key::Down, KeyRepeat::No)
             || window.is_key_pressed(Key::Left, KeyRepeat::No)
