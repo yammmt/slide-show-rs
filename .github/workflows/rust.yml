@@ -14,11 +14,9 @@ jobs:
       - name: Install packages
         run: sudo apt install libwayland-cursor0 libxkbcommon-dev libwayland-dev
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1.0.7
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           components: rustfmt
-          override: true
       - name: rustfmt
         run: cargo fmt -- --check
 
@@ -32,21 +30,12 @@ jobs:
       - if: matrix.os == 'ubuntu-latest'
         run: sudo apt install libwayland-cursor0 libxkbcommon-dev libwayland-dev
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1.0.7
-        with:
-          toolchain: stable
-          override: true
+      - uses: dtolnay/rust-toolchain@stable
       - name: cargo test (stable)
         run: cargo test --verbose
-      - uses: actions-rs/toolchain@v1.0.7
-        with:
-          toolchain: beta
-          override: true
+      - uses: dtolnay/rust-toolchain@beta
       - name: cargo test (beta)
         run: cargo test --verbose
-      - uses: actions-rs/toolchain@v1.0.7
-        with:
-          toolchain: nightly
-          override: true
+      - uses: dtolnay/rust-toolchain@nightly
       - name: cargo test (nightly)
         run: cargo test --verbose
