@@ -210,8 +210,9 @@ fn image_buffer_from_filepath<P>(
         let (width, height) = rgb.dimensions();
         let mut buf: Vec<u32> = vec![0; (width * height) as usize];
 
-        let threads = num_cpus::get();
-        let rows_per_band = height / threads as u32 + 1;
+        let threads =
+            std::thread::available_parallelism().expect("Failed to get available parallelism num");
+        let rows_per_band = height / threads.get() as u32 + 1;
         let bands: Vec<&mut [u32]> = buf.chunks_mut((rows_per_band * width) as usize).collect();
         bands.into_par_iter().enumerate().for_each(|(i, band)| {
             for (j, b) in band.iter_mut().enumerate() {
