@@ -416,9 +416,9 @@ checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 
 [[package]]
 name = "image"
-version = "0.24.7"
+version = "0.24.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f3dfdbdd72063086ff443e297b61695500514b1e41095b6fb9a5ab48a70a711"
+checksum = "034bbe799d1909622a74d1193aa50147769440040ff36cb2baa947609b0a4e23"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -426,7 +426,6 @@ dependencies = [
  "exr",
  "gif",
  "jpeg-decoder",
- "num-rational",
  "num-traits",
  "png",
  "qoi",
@@ -638,17 +637,6 @@ name = "num-iter"
 version = "0.1.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfb0800a0291891dd9f4fe7bd9c19384f98f7fbe0cd0f39a2c6b88b9868bbc00"
-dependencies = [
- "autocfg 1.0.0",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0638a1c9d0a3c0914158145bc76cff373a75a627e6ecbfb71cbe6f453a5a19b0"
 dependencies = [
  "autocfg 1.0.0",
  "num-integer",
