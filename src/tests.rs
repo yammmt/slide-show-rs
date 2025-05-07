@@ -1,16 +1,23 @@
 use super::*;
 
 #[test]
-// TODO: make sure that huge image is resized to fit given size
-fn test_img_filepath() {
-    // failure cases
-    let err1 = get_scaled_img_filepath_array("./.gitignore", WindowSize(3840, 2160)).unwrap_err();
-    assert!(matches!(err1, ImageFilepathError::InvalidDirectory));
+fn test_get_scaled_img_filepath_array_invalid_directory() {
+    let err = get_scaled_img_filepath_array("./.gitignore", WindowSize(3840, 2160)).unwrap_err();
+    assert!(matches!(err, ImageFilepathError::InvalidDirectory));
 
-    let err2 = get_scaled_img_filepath_array("./src", WindowSize(20, 10)).unwrap_err();
-    assert!(matches!(err2, ImageFilepathError::NoImageFileFound));
+    let err =
+        get_scaled_img_filepath_array("./photo/test/*.jpg", WindowSize(3840, 2160)).unwrap_err();
+    assert!(matches!(err, ImageFilepathError::InvalidDirectory));
+}
 
-    // success case
+#[test]
+fn test_get_scaled_img_filepath_array_no_image_file_found() {
+    let err = get_scaled_img_filepath_array("./src", WindowSize(20, 10)).unwrap_err();
+    assert!(matches!(err, ImageFilepathError::NoImageFileFound));
+}
+
+#[test]
+fn test_get_scaled_img_filepath_array_success_case() {
     // ensure all image paths are included
     let img_filepaths =
         get_scaled_img_filepath_array("./photo/test/", WindowSize(3840, 2160)).unwrap();
@@ -24,12 +31,6 @@ fn test_img_filepath() {
         assert!(img_filepaths.iter().any(|v| v.ends_with(filename)));
     }
     assert!(!img_filepaths.iter().any(|v| v.ends_with("dummy.jpg")));
-}
-
-#[test]
-fn test_img_filepath_with_wrong_dir() {
-    let err = get_scaled_img_filepath_array("./photo/test/*.jpg", WindowSize(3840, 2160)).unwrap_err();
-    assert!(matches!(err, ImageFilepathError::InvalidDirectory));
 }
 
 #[test]
