@@ -4,10 +4,11 @@ use super::*;
 // TODO: make sure that huge image is resized to fit given size
 fn test_img_filepath() {
     // failure cases
-    // TODO: are there better ways to test returned type?
-    //       error type like `InvalidDirectory` should be confirmed
-    assert!(get_scaled_img_filepath_array("./.gitignore", WindowSize(3840, 2160)).is_err());
-    assert!(get_scaled_img_filepath_array("./src", WindowSize(20, 10)).is_err());
+    let err1 = get_scaled_img_filepath_array("./.gitignore", WindowSize(3840, 2160)).unwrap_err();
+    assert!(matches!(err1, ImageFilepathError::InvalidDirectory));
+
+    let err2 = get_scaled_img_filepath_array("./src", WindowSize(20, 10)).unwrap_err();
+    assert!(matches!(err2, ImageFilepathError::NoImageFileFound));
 
     // success case
     // ensure all image paths are included
@@ -27,7 +28,8 @@ fn test_img_filepath() {
 
 #[test]
 fn test_img_filepath_with_wrong_dir() {
-    assert!(get_scaled_img_filepath_array("./photo/test/*.jpg", WindowSize(3840, 2160)).is_err());
+    let err = get_scaled_img_filepath_array("./photo/test/*.jpg", WindowSize(3840, 2160)).unwrap_err();
+    assert!(matches!(err, ImageFilepathError::InvalidDirectory));
 }
 
 #[test]
