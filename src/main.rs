@@ -1,5 +1,5 @@
 use glob::glob;
-use image::{imageops, GenericImageView};
+use image::{GenericImageView, imageops};
 use log::{info, warn};
 use minifb::{Key, KeyRepeat, ScaleMode, Window, WindowOptions};
 use rand::seq::SliceRandom;
@@ -53,7 +53,7 @@ impl fmt::Display for ImageFilepathError {
         match &self {
             ImageFilepathError::InvalidDirectory => write!(f, "Invalid directory path"),
             ImageFilepathError::InvalidCharset => write!(f, "Use UTF-8 for photo directory name"),
-            ImageFilepathError::InvalidGlobPattern(ref e) => e.fmt(f),
+            ImageFilepathError::InvalidGlobPattern(e) => e.fmt(f),
             ImageFilepathError::NoImageFileFound => write!(f, "No image file found"),
         }
     }
