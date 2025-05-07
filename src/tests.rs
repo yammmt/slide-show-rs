@@ -5,8 +5,8 @@ fn test_get_scaled_img_filepath_array_invalid_directory() {
     let err = get_scaled_img_filepath_array("./.gitignore", WindowSize(3840, 2160)).unwrap_err();
     assert!(matches!(err, ImageFilepathError::InvalidDirectory));
 
-    let err =
-        get_scaled_img_filepath_array("./photo/test/*.jpg", WindowSize(3840, 2160)).unwrap_err();
+    let err = get_scaled_img_filepath_array("./test/assets/photo/*.jpg", WindowSize(3840, 2160))
+        .unwrap_err();
     assert!(matches!(err, ImageFilepathError::InvalidDirectory));
 }
 
@@ -20,8 +20,8 @@ fn test_get_scaled_img_filepath_array_no_image_file_found() {
 fn test_get_scaled_img_filepath_array_success_case() {
     // ensure all image paths are included
     let img_filepaths =
-        get_scaled_img_filepath_array("./photo/test/", WindowSize(3840, 2160)).unwrap();
-    for entry in glob("photo/test/*.jpg").unwrap() {
+        get_scaled_img_filepath_array("./test/assets/photo/", WindowSize(3840, 2160)).unwrap();
+    for entry in glob("test/assets/photo/*.jpg").unwrap() {
         let e = entry.unwrap();
         let filename = e.file_name().unwrap().to_str().unwrap();
         if filename == "dummy.jpg" {
@@ -41,7 +41,7 @@ fn test_img_buffer() {
         image_buffer_from_filepath(tx1, rx2);
     });
 
-    tx2.send(ThreadMessage::Filepath("photo/test/sawayaka256.jpg"))
+    tx2.send(ThreadMessage::Filepath("test/assets/photo/sawayaka256.jpg"))
         .unwrap();
     match rx1.recv().unwrap() {
         ThreadMessage::ImageBuffer(ib) => {
