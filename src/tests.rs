@@ -28,7 +28,12 @@ fn test_get_scaled_img_filepath_array_success_case() {
             // dummy file (without contents) must be skipped
             continue;
         }
-        assert!(img_filepaths.iter().any(|v| v.ends_with(filename)));
+        assert!(
+            img_filepaths.iter().any(|v| v.ends_with(filename)),
+            "Expected file {} not found in img_filepaths: {:?}",
+            filename,
+            img_filepaths
+        );
     }
     assert!(!img_filepaths.iter().any(|v| v.ends_with("dummy.jpg")));
 }
@@ -45,13 +50,11 @@ fn test_img_buffer() {
         .unwrap();
     match rx1.recv().unwrap() {
         ThreadMessage::ImageBuffer(ib) => {
-            if let Ok(img_buf) = ib {
-                // there are NO practical ways to test image buffer itself...
-                assert_eq!(img_buf.width, 256);
-                assert_eq!(img_buf.height, 256);
-            } else {
-                panic!();
-            }
+            // Only basic properties (like dimensions) are checked here, as
+            // verifying the entire image buffer content is impractical in tests.
+            let img_buf = ib.expect("Expected Ok(ImageBuffer), got error");
+            assert_eq!(img_buf.width, 256);
+            assert_eq!(img_buf.height, 256);
         }
         _ => panic!(),
     }
