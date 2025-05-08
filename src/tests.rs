@@ -71,8 +71,7 @@ fn test_img_buffer_with_wrong_filepath() {
     tx2.send(ThreadMessage::Filepath(".gitignore")).unwrap();
     match rx1.recv().unwrap() {
         ThreadMessage::ImageBuffer(ib) => {
-            // TODO: make sure that error is `ImageBufferError::OpenError` type
-            assert!(ib.is_err());
+            assert!(matches!(ib, Err(ImageBufferError::OpenError(_))));
         }
         _ => panic!(),
     }
