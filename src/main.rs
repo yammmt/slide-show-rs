@@ -277,7 +277,7 @@ fn main() {
         Err(ImageFilepathError::NoImageFileFound) => panic!("No image file found in {}", dir),
     };
     info!("images found: {:?}", img_filepaths);
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     img_filepaths.shuffle(&mut rng);
 
     // use threads to prepare image buffer before it is needed
