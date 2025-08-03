@@ -30,9 +30,7 @@ fn test_get_scaled_img_filepath_array_success_case() {
         }
         assert!(
             img_filepaths.iter().any(|v| v.ends_with(filename)),
-            "Expected file {} not found in img_filepaths: {:?}",
-            filename,
-            img_filepaths
+            "Expected file {filename} not found in img_filepaths: {img_filepaths:?}"
         );
     }
     assert!(!img_filepaths.iter().any(|v| v.ends_with("dummy.jpg")));

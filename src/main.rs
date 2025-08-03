@@ -121,7 +121,7 @@ where
 
                 let resized_dir = s
                     .parent()
-                    .unwrap_or_else(|| panic!("Failed to get parent directory of {:?}", s))
+                    .unwrap_or_else(|| panic!("Failed to get parent directory of {s:?}"))
                     .join("resized");
                 if img.dimensions().0 > window_size.0 as u32
                     || img.dimensions().1 > window_size.1 as u32
@@ -155,7 +155,7 @@ where
                     Some(PathBuf::from(&s))
                 }
             } else {
-                warn!("Failed to parse path {:?}", entry);
+                warn!("Failed to parse path {entry:?}");
                 None
             }
         })
@@ -271,12 +271,12 @@ fn main() {
     let mut img_filepaths = match get_scaled_img_filepath_array(dir, size) {
         Ok(a) => a,
         // unrecoverable: given directory itself has problem
-        Err(ImageFilepathError::InvalidDirectory) => panic!("Invalid directory path: {}", dir),
+        Err(ImageFilepathError::InvalidDirectory) => panic!("Invalid directory path: {dir}"),
         Err(ImageFilepathError::InvalidCharset) => panic!("Directory path isn't based on UTF-8"),
         Err(ImageFilepathError::InvalidGlobPattern(e)) => panic!("{}", e.msg),
-        Err(ImageFilepathError::NoImageFileFound) => panic!("No image file found in {}", dir),
+        Err(ImageFilepathError::NoImageFileFound) => panic!("No image file found in {dir}"),
     };
-    info!("images found: {:?}", img_filepaths);
+    info!("images found: {img_filepaths:?}");
     let mut rng = rand::rng();
     img_filepaths.shuffle(&mut rng);
 
@@ -332,12 +332,12 @@ fn main() {
             || window.is_key_pressed(Key::Right, KeyRepeat::No)
         {
             interval_sec = 0.5f32.max(interval_sec - 0.5);
-            info!("Speed up: {}s", interval_sec)
+            info!("Speed up: {interval_sec}s")
         } else if window.is_key_pressed(Key::Down, KeyRepeat::No)
             || window.is_key_pressed(Key::Left, KeyRepeat::No)
         {
             interval_sec += 0.5;
-            info!("Speed down: {}s", interval_sec);
+            info!("Speed down: {interval_sec}s");
         }
 
         // If receiving buffer here, we have to `clone` this value again when
@@ -349,7 +349,7 @@ fn main() {
                     Ok(ib) => next_img_buf = ib,
                     Err(e) => {
                         // try to read next image of next image
-                        info!("error: {:?}", e);
+                        info!("error: {e:?}");
                         img_idx = (img_idx + 1) % img_filepaths.len();
                         tx_to_buf_func
                             .send(ThreadMessage::Filepath(img_filepaths[img_idx].clone()))
