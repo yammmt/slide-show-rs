@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Install packages
         run: sudo apt install libwayland-cursor0 libxkbcommon-dev libwayland-dev
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
@@ -25,7 +25,7 @@ jobs:
     env:
       RUSTFLAGS: "-Dwarnings"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
 
@@ -38,7 +38,7 @@ jobs:
     steps:
       - if: matrix.os == 'ubuntu-latest'
         run: sudo apt install libwayland-cursor0 libxkbcommon-dev libwayland-dev
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - name: cargo test (stable)
         run: cargo test --verbose
