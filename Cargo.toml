@@ -7,7 +7,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dotenv = "^0.15"
+dotenvy = "^0.15"
 glob = "^0.3"
 image = "^0.25"
 log = "^0.4"

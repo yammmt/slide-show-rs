@@ -253,8 +253,8 @@ fn main() {
     SimpleLogger::new().init().unwrap();
 
     // get window size
-    let w = dotenv::var("WINDOW_WIDTH");
-    let h = dotenv::var("WINDOW_HEIGHT");
+    let w = dotenvy::var("WINDOW_WIDTH");
+    let h = dotenvy::var("WINDOW_HEIGHT");
     let size = WindowSize(
         match w {
             Ok(w_str) => w_str.parse().unwrap(),
